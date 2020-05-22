@@ -1,0 +1,106 @@
+#include <sodium.h>
+
+#include "common-sodium.h"
+#include "logging.h"
+#include "protocol.h"
+
+void log_bin2hex_sodium(char const * const prefix, uint8_t const * const buffer, size_t size)
+{
+    char hexstr[2 * size + 1];
+    LOG(NOTICE, "%s: %s", prefix, sodium_bin2hex(hexstr, sizeof(hexstr), buffer, size));
+    sodium_memzero(hexstr, sizeof(hexstr));
+}
+
+struct longterm_keypair * generate_keypair_sodium(void)
+{
+    struct longterm_keypair * keypair = (struct longterm_keypair *)malloc(sizeof(*keypair));
+
+    if (keypair == NULL) {
+        return NULL;
+    }
+
+    sodium_memzero(keypair->publickey, crypto_kx_PUBLICKEYBYTES);
+    sodium_memzero(keypair->secretkey, crypto_kx_SECRETKEYBYTES);
+    crypto_kx_keypair(keypair->publickey, keypair->secretkey);
+    sodium_mlock(keypair, sizeof(*keypair));
+
+    return keypair;
+}
+
+struct longterm_keypair * generate_keypair_from_secretkey_hexstr_sodium(char const * const secretkey_hexstr,
+                                                                        size_t secretkey_hexstr_len)
+{
+    struct longterm_keypair * keypair = (struct longterm_keypair *)malloc(sizeof(*keypair));
+
+    if (keypair == NULL) {
+        return NULL;
+    }
+
+    if (sodium_hex2bin(
+            keypair->secretkey, sizeof(keypair->secretkey), secretkey_hexstr, secretkey_hexstr_len, NULL, NULL, NULL) !=
+        0) {
+        LOG(ERROR, "Could not parse private key: %s", secretkey_hexstr);
+        goto error;
+    }
+
+    if (crypto_scalarmult_base(keypair->publickey, keypair->secretkey) != 0) {
+        LOG(ERROR, "Could not extract public key from a secret key");
+        goto error;
+    }
+
+    return keypair;
+error:
+    free(keypair);
+    return NULL;
+}
+
+int generate_session_keypair_sodium(struct connection * const state)
+{
+    if (state->session_keys != NULL) {
+        LOG(ERROR, "Session initialization invoked twice, abort");
+        return 1;
+    }
+
+    state->session_keys = (struct session_keys *)malloc(sizeof(*(state->session_keys)));
+    if (state->session_keys == NULL) {
+        return 1;
+    }
+
+    if (state->is_server_side != 0 && crypto_kx_server_session_keys(state->session_keys->rx,
+                                                                    state->session_keys->tx,
+                                                                    state->my_keypair->publickey,
+                                                                    state->my_keypair->secretkey,
+                                                                    state->peer_publickey) != 0) {
+        LOG(ERROR, "Session key creation failed");
+        return 1;
+    } else if (state->is_server_side == 0 && crypto_kx_client_session_keys(state->session_keys->rx,
+                                                                           state->session_keys->tx,
+                                                                           state->my_keypair->publickey,
+                                                                           state->my_keypair->secretkey,
+                                                                           state->peer_publickey) != 0) {
+        LOG(ERROR, "Session key creation failed");
+        return 1;
+    }
+
+    log_bin2hex_sodium("Generated session rx key", state->session_keys->rx, crypto_kx_SESSIONKEYBYTES);
+    log_bin2hex_sodium("Generated session tx key", state->session_keys->tx, crypto_kx_SESSIONKEYBYTES);
+
+    return 0;
+}
+
+int init_sockaddr_inet(struct sockaddr_in * const sin,
+                       const char * const host,
+                       int port,
+                       char ip_str[INET6_ADDRSTRLEN + 1])
+{
+    memset(sin, 0, sizeof(*sin));
+    sin->sin_family = AF_INET;
+    sin->sin_port = htons(port);
+    if (inet_pton(sin->sin_family, host, &sin->sin_addr) <= 0 ||
+        inet_ntop(sin->sin_family, &sin->sin_addr, ip_str, INET6_ADDRSTRLEN) == NULL) {
+        LOG(ERROR, "Invalid host: %s", host);
+        return 1;
+    }
+
+    return 0;
+}
