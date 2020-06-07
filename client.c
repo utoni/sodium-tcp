@@ -65,9 +65,10 @@ enum recv_return protocol_request_server_helo(struct connection * const state,
     (void)processed;
     LOG(NOTICE, "Server HELLO with message: %.*s", sizeof(helo_pkt->server_message), helo_pkt->server_message);
 
-    crypto_secretstream_xchacha20poly1305_init_pull(&state->crypto_rx_state,
-                                                    helo_pkt->client_rx_header,
-                                                    state->session_keys->rx);
+    if (init_crypto_client(state, helo_pkt->client_rx_header, sizeof(helo_pkt->client_rx_header)) != 0) {
+        LOG(ERROR, "Client session keypair generation failed");
+        return RECV_FATAL;
+    }
 
     if (ev_setup_generic_timer((struct ev_user_data *)state->user_data, PING_INTERVAL) != 0) {
         LOG(ERROR, "Timer init failed");

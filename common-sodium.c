@@ -48,6 +48,8 @@ struct longterm_keypair * generate_keypair_from_secretkey_hexstr_sodium(char con
         goto error;
     }
 
+    sodium_mlock(keypair, sizeof(*keypair));
+
     return keypair;
 error:
     free(keypair);
@@ -101,6 +103,42 @@ int init_sockaddr_inet(struct sockaddr_in * const sin,
         LOG(ERROR, "Invalid host: %s", host);
         return 1;
     }
+
+    return 0;
+}
+
+int init_crypto_server(struct connection * const state,
+                       unsigned char const * const server_rx_header,
+                       size_t server_rx_header_size)
+{
+    if (server_rx_header_size != crypto_secretstream_xchacha20poly1305_HEADERBYTES) {
+        LOG(ERROR,
+            "Invalid Sodium RX header size: %zu != %zu",
+            server_rx_header_size,
+            crypto_secretstream_xchacha20poly1305_HEADERBYTES);
+        return 1;
+    }
+    if (generate_session_keypair_sodium(state) != 0) {
+        LOG(ERROR, "Client session keypair generation failed");
+        return 1;
+    }
+    crypto_secretstream_xchacha20poly1305_init_pull(&state->crypto_rx_state, server_rx_header, state->session_keys->rx);
+
+    return 0;
+}
+
+int init_crypto_client(struct connection * const state,
+                       unsigned char const * const client_rx_header,
+                       size_t client_rx_header_size)
+{
+    if (client_rx_header_size != crypto_secretstream_xchacha20poly1305_HEADERBYTES) {
+        LOG(ERROR,
+            "Invalid Sodium RX header size: %zu != %zu",
+            client_rx_header_size,
+            crypto_secretstream_xchacha20poly1305_HEADERBYTES);
+        return 1;
+    }
+    crypto_secretstream_xchacha20poly1305_init_pull(&state->crypto_rx_state, client_rx_header, state->session_keys->rx);
 
     return 0;
 }

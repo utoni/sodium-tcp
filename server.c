@@ -66,14 +66,10 @@ enum recv_return protocol_request_client_auth(struct connection * const state,
     }
 
     log_bin2hex_sodium("Client AUTH with PublicKey", auth_pkt->client_publickey, sizeof(auth_pkt->client_publickey));
-
-    if (generate_session_keypair_sodium(state) != 0) {
+    if (init_crypto_server(state, auth_pkt->server_rx_header, sizeof(auth_pkt->server_rx_header)) != 0) {
         LOG(ERROR, "Client session keypair generation failed");
         return RECV_FATAL;
     }
-    crypto_secretstream_xchacha20poly1305_init_pull(&state->crypto_rx_state,
-                                                    auth_pkt->server_rx_header,
-                                                    state->session_keys->rx);
 
     if (ev_protocol_server_helo(state, "Welcome.") != 0) {
         LOG(ERROR, "Server AUTH response failed");
