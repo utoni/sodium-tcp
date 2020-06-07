@@ -266,7 +266,7 @@ int main(int argc, char ** argv)
         LOG(ERROR, "Sodium keypair generation failed");
         cleanup_and_exit(&ev_base, &ev_sig, &my_keypair, &c, 5);
     }
-    log_bin2hex_sodium("Client public key", my_keypair->publickey, sizeof(my_keypair->publickey));
+    log_bin2hex_sodium(NOTICE, "Client public key", my_keypair->publickey, sizeof(my_keypair->publickey));
 
     /* create global connection state */
     c = new_connection_to_server(my_keypair);
@@ -281,7 +281,7 @@ int main(int argc, char ** argv)
         LOG(ERROR, "Could not parse server public key: %s", opts.key_string);
         cleanup_and_exit(&ev_base, &ev_sig, &my_keypair, &c, 7);
     }
-    log_bin2hex_sodium("Server public key", c->peer_publickey, sizeof(c->peer_publickey));
+    log_bin2hex_sodium(NOTICE, "Server public key", c->peer_publickey, sizeof(c->peer_publickey));
 
     ev_base = event_base_new();
     if (ev_base == NULL) {

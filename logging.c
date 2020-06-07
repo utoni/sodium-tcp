@@ -18,9 +18,9 @@
 #define DEF RESET
 
 #ifdef DEBUG_BUILD
-static log_priority lower_prio = LP_DEBUG;
+log_priority lower_prio = LP_DEBUG;
 #else
-static log_priority lower_prio = NOTICE;
+log_priority lower_prio = NOTICE;
 #endif
 
 void log_fmt_colored(log_priority prio, const char * fmt, ...)

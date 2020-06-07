@@ -65,7 +65,7 @@ enum recv_return protocol_request_client_auth(struct connection * const state,
         return RECV_FATAL_UNAUTH;
     }
 
-    log_bin2hex_sodium("Client AUTH with PublicKey", auth_pkt->client_publickey, sizeof(auth_pkt->client_publickey));
+    log_bin2hex_sodium(NOTICE, "Client AUTH with PublicKey", auth_pkt->client_publickey, sizeof(auth_pkt->client_publickey));
     if (init_crypto_server(state, auth_pkt->server_rx_header, sizeof(auth_pkt->server_rx_header)) != 0) {
         LOG(ERROR, "Client session keypair generation failed");
         return RECV_FATAL;
@@ -104,7 +104,7 @@ enum recv_return protocol_request_data(struct connection * const state,
     (void)state;
     (void)processed;
     LOG(NOTICE, "Received DATA with size: %u", data_pkt->header.body_size);
-    log_bin2hex_sodium("DATA", data_pkt->payload, data_pkt->header.body_size);
+    log_bin2hex_sodium(LP_DEBUG, "DATA", data_pkt->payload, data_pkt->header.body_size);
     recv_data(data_pkt->payload, data_pkt->header.body_size);
     snprintf(response, sizeof(response), "DATA OK: RECEIVED %u BYTES", data_pkt->header.body_size);
     if (ev_protocol_data(state, (uint8_t *)response, sizeof(response)) != 0) {
@@ -168,6 +168,7 @@ static void event_cb(struct bufferevent * bev, short events, void * con)
 
     if (events & BEV_EVENT_ERROR) {
         LOG(ERROR, "Error from bufferevent: %s", strerror(errno));
+        ev_disconnect(c);
         return;
     }
     if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
@@ -327,9 +328,9 @@ int main(int argc, char ** argv)
         cleanup_and_exit(&ev_base, &ev_listener, &ev_sig, &my_keypair, 4);
     }
     if (opts.key_string == NULL) {
-        log_bin2hex_sodium("Server PrivateKey", my_keypair->secretkey, sizeof(my_keypair->secretkey));
+        log_bin2hex_sodium(NOTICE, "Server PrivateKey", my_keypair->secretkey, sizeof(my_keypair->secretkey));
     }
-    log_bin2hex_sodium("Server PublicKey", my_keypair->publickey, sizeof(my_keypair->publickey));
+    log_bin2hex_sodium(NOTICE, "Server PublicKey", my_keypair->publickey, sizeof(my_keypair->publickey));
 
     ev_base = event_base_new();
     if (ev_base == NULL) {

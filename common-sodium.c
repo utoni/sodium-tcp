@@ -4,11 +4,15 @@
 #include "logging.h"
 #include "protocol.h"
 
-void log_bin2hex_sodium(char const * const prefix, uint8_t const * const buffer, size_t size)
+void log_bin2hex_sodium(enum log_priority log_prio, char const * const prefix,
+                        uint8_t const * const buffer, size_t size)
 {
     char hexstr[2 * size + 1];
-    LOG(NOTICE, "%s: %s", prefix, sodium_bin2hex(hexstr, sizeof(hexstr), buffer, size));
-    sodium_memzero(hexstr, sizeof(hexstr));
+
+    if (log_prio >= lower_prio) {
+        LOG(log_prio, "%s: %s", prefix, sodium_bin2hex(hexstr, sizeof(hexstr), buffer, size));
+        sodium_memzero(hexstr, sizeof(hexstr));
+    }
 }
 
 struct longterm_keypair * generate_keypair_sodium(void)
@@ -84,8 +88,8 @@ int generate_session_keypair_sodium(struct connection * const state)
         return 1;
     }
 
-    log_bin2hex_sodium("Generated session rx key", state->session_keys->rx, crypto_kx_SESSIONKEYBYTES);
-    log_bin2hex_sodium("Generated session tx key", state->session_keys->tx, crypto_kx_SESSIONKEYBYTES);
+    log_bin2hex_sodium(NOTICE, "Generated session rx key", state->session_keys->rx, crypto_kx_SESSIONKEYBYTES);
+    log_bin2hex_sodium(NOTICE, "Generated session tx key", state->session_keys->tx, crypto_kx_SESSIONKEYBYTES);
 
     return 0;
 }
