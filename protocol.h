@@ -11,8 +11,8 @@
 #define PROTOCOL_MAGIC 0xBAADC0DE
 #define PROTOCOL_VERSION 0xDEADCAFE
 #define PROTOCOL_TIME_STRLEN 32
-#define WINDOW_SIZE 65535
-#if WINDOW_SIZE > 65535
+#define WINDOW_SIZE (65535*2)
+#if WINDOW_SIZE > (65535*2)
 #error "Window size is limited by sizeof(header.body_size)"
 #endif
 
@@ -52,8 +52,8 @@ enum header_types {
 
 struct protocol_header {
     uint32_t magic;
-    uint16_t pdu_type;
-    uint16_t body_size;
+    uint32_t pdu_type;
+    uint32_t body_size;
 } PROTOCOL_ATTRIBUTES;
 
 struct protocol_client_auth {

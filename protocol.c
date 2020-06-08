@@ -161,7 +161,7 @@ static enum recv_return run_protocol_callback(struct connection * const state,
     struct protocol_header const * const hdr = (struct protocol_header *)decrypted->pointer;
     enum header_types type = (enum header_types)hdr->pdu_type;
     size_t min_size = 0;
-    uint16_t size = hdr->body_size;
+    uint32_t size = hdr->body_size;
 
     switch (state->state) {
         case CONNECTION_INVALID:
@@ -201,25 +201,25 @@ static void header_ntoh(struct protocol_header * const hdr)
 {
     hdr->magic = ntohl(hdr->magic);
     hdr->pdu_type = ntohs(hdr->pdu_type);
-    hdr->body_size = ntohs(hdr->body_size);
+    hdr->body_size = ntohl(hdr->body_size);
 }
 
 static enum recv_return validate_header(struct protocol_header const * const hdr, size_t buffer_size)
 {
     enum header_types type = (enum header_types)hdr->pdu_type;
-    uint16_t size;
+    uint32_t size;
 
     if (hdr->magic != PROTOCOL_MAGIC) {
         return RECV_CORRUPT_PACKET;
     }
 
     size = hdr->body_size;
-    /* following check does not make sense if sizeof(header.body_size) == 2 and WINDOW_SIZE >= 65535 */
-#if WINDOW_SIZE < 65535
+    /* following check does not make sense if sizeof(header.body_size) == 2 and WINDOW_SIZE >= (65535*2) */
+#if WINDOW_SIZE < (65535*2)
     if (size > WINDOW_SIZE) {
         return RECV_CORRUPT_PACKET;
     }
-#elif WINDOW_SIZE > 65535
+#elif WINDOW_SIZE > (65535*2)
 #error "Remember to change that code part if you've changed the type of header.body_size e.g. to uint32_t"
 #endif
     if (size > buffer_size) {
@@ -416,13 +416,13 @@ enum recv_return process_received(struct connection * const state,
  * PDU send functionality *
  **************************/
 
-static void protocol_response(void * const buffer, uint16_t body_and_payload_size, enum header_types type)
+static void protocol_response(void * const buffer, uint32_t body_and_payload_size, enum header_types type)
 {
     struct protocol_header * const header = (struct protocol_header *)buffer;
 
     header->magic = htonl(PROTOCOL_MAGIC);
     header->pdu_type = htons((uint16_t)type);
-    header->body_size = htons(body_and_payload_size - sizeof(*header));
+    header->body_size = htonl(body_and_payload_size - sizeof(*header));
 }
 
 void protocol_response_client_auth(unsigned char out[CRYPT_PACKET_SIZE_CLIENT_AUTH],

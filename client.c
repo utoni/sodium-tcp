@@ -41,7 +41,8 @@ static void send_data(struct connection * const state)
             close(data_fd);
             data_fd = -1;
         } else {
-            LOG(NOTICE, "Send DATA: %zd", bytes_read);
+            LOG(NOTICE, "Send DATA: %zd bytes, buffer capacity %0.2f%% unused", bytes_read,
+                100.0f - ((float)bytes_read / sizeof(buf)) * 100.0f);
         }
     }
 }
