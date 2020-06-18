@@ -504,7 +504,11 @@ static int create_timestamp(struct tm * const timestamp,
     *usec = ts_val.tv_usec;
     ts = time(NULL);
     gmtime_r(&ts, timestamp);
-    return strftime(timestamp_str, PROTOCOL_TIME_STRLEN, "%a, %d %b %Y %T %z", timestamp);
+
+    if (timestamp_str) {
+        return strftime(timestamp_str, PROTOCOL_TIME_STRLEN, "%a, %d %b %Y %T %z", timestamp);
+    }
+    return 0;
 }
 
 void protocol_response_ping(unsigned char out[CRYPT_PACKET_SIZE_PING], struct connection * const state)
