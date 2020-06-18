@@ -19,10 +19,9 @@ DEBUG_CFLAGS =
 EXTRA_CFLAGS = -Werror -Os
 endif
 
-CFLAGS = -Wall -Wextra -std=gnu11 $(EXTRA_CFLAGS) -D_GNU_SOURCE $(DEBUG_CFLAGS) $(SANITIZER_CFLAGS) \
+CFLAGS += -Wall -Wextra -std=gnu11 $(EXTRA_CFLAGS) -D_GNU_SOURCE $(DEBUG_CFLAGS) $(SANITIZER_CFLAGS) \
 		 $(shell $(PKG_CONFIG_BIN) --cflags libsodium) \
 		 $(shell $(PKG_CONFIG_BIN) --cflags libevent)
-LDFLAGS =
 
 HEADER_TARGETS = common-event2.h common-sodium.h logging.h protocol.h
 BUILD_TARGETS = common-event2.o common-sodium.o logging.o protocol.o
