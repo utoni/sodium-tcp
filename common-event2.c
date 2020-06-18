@@ -279,6 +279,10 @@ void ev_read_cb(struct bufferevent * bev, void * connection_state)
                 LOG(ERROR, "Crypto error");
                 ev_disconnect(c);
                 return;
+            case RECV_FATAL_REMOTE_WINDOW_SIZE:
+                LOG(ERROR, "Remote has a larger WINDOW_SIZE size than us.");
+                ev_disconnect(c);
+                return;
             case RECV_CORRUPT_PACKET:
                 LOG(ERROR, "Packet Corrupt");
                 ev_disconnect(c);

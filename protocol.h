@@ -12,7 +12,7 @@
 #define PROTOCOL_VERSION 0xDEADCAFE
 #define PROTOCOL_TIME_STRLEN 32
 #define WINDOW_SIZE (65535*2)
-#if WINDOW_SIZE > (65535*2)
+#if WINDOW_SIZE > (UINT_MAX)
 #error "Window size is limited by sizeof(header.body_size)"
 #endif
 
@@ -142,6 +142,9 @@ struct connection {
 
     double latency_usec;
 
+    uint64_t total_bytes_recv;
+    uint64_t total_bytes_sent;
+
     /* generated symmetric session keys used by server and client */
     struct session_keys * session_keys;
 
@@ -158,6 +161,7 @@ enum recv_return {
     RECV_FATAL,
     RECV_FATAL_UNAUTH,
     RECV_FATAL_CRYPTO_ERROR,
+    RECV_FATAL_REMOTE_WINDOW_SIZE,
     RECV_CORRUPT_PACKET,
     RECV_BUFFER_NEED_MORE_DATA,
     RECV_CALLBACK_NOT_IMPLEMENTED

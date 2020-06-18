@@ -214,14 +214,9 @@ static enum recv_return validate_header(struct protocol_header const * const hdr
     }
 
     size = hdr->body_size;
-    /* following check does not make sense if sizeof(header.body_size) == 2 and WINDOW_SIZE >= (65535*2) */
-#if WINDOW_SIZE < (65535*2)
     if (size > WINDOW_SIZE) {
-        return RECV_CORRUPT_PACKET;
+        return RECV_FATAL_REMOTE_WINDOW_SIZE;
     }
-#elif WINDOW_SIZE > (65535*2)
-#error "Remember to change that code part if you've changed the type of header.body_size e.g. to uint32_t"
-#endif
     if (size > buffer_size) {
         return RECV_BUFFER_NEED_MORE_DATA;
     }
@@ -407,6 +402,7 @@ enum recv_return process_received(struct connection * const state,
         }
     }
 
+    state->total_bytes_recv += *buffer_size;
     state->partial_packet_received = 0;
     *buffer_size = 0;
     return run_protocol_callback(state, &encrypted, &decrypted, buffer_size);
@@ -416,13 +412,17 @@ enum recv_return process_received(struct connection * const state,
  * PDU send functionality *
  **************************/
 
-static void protocol_response(void * const buffer, uint32_t body_and_payload_size, enum header_types type)
+static void protocol_response(struct connection * const state,
+                              void * const buffer, uint32_t body_and_payload_size,
+                              enum header_types type)
 {
     struct protocol_header * const header = (struct protocol_header *)buffer;
 
     header->magic = htonl(PROTOCOL_MAGIC);
     header->pdu_type = htons((uint16_t)type);
     header->body_size = htonl(body_and_payload_size - sizeof(*header));
+
+    state->total_bytes_sent += (sizeof(*header) + body_and_payload_size);
 }
 
 void protocol_response_client_auth(unsigned char out[CRYPT_PACKET_SIZE_CLIENT_AUTH],
@@ -432,7 +432,7 @@ void protocol_response_client_auth(unsigned char out[CRYPT_PACKET_SIZE_CLIENT_AU
 {
     struct protocol_client_auth auth_pkt;
 
-    protocol_response(&auth_pkt, sizeof(auth_pkt), TYPE_CLIENT_AUTH);
+    protocol_response(state, &auth_pkt, sizeof(auth_pkt), TYPE_CLIENT_AUTH);
     /* version */
     state->used_protocol_version = PROTOCOL_VERSION;
     auth_pkt.protocol_version = htonl(state->used_protocol_version);
@@ -460,7 +460,7 @@ void protocol_response_server_helo(unsigned char out[CRYPT_PACKET_SIZE_SERVER_HE
 {
     struct protocol_server_helo helo_pkt;
 
-    protocol_response(&helo_pkt, sizeof(helo_pkt), TYPE_SERVER_HELO);
+    protocol_response(state, &helo_pkt, sizeof(helo_pkt), TYPE_SERVER_HELO);
     /* nonce */
     sodium_increment(state->last_nonce, crypto_box_NONCEBYTES);
     memcpy(helo_pkt.nonce_increment, state->last_nonce, crypto_box_NONCEBYTES);
@@ -485,7 +485,7 @@ void protocol_response_data(uint8_t * out,
     if (out_size != CRYPT_PACKET_SIZE_DATA + payload_size) {
         return;
     }
-    protocol_response(&data_hdr, sizeof(data_hdr) + payload_size, TYPE_DATA);
+    protocol_response(state, &data_hdr, sizeof(data_hdr) + payload_size, TYPE_DATA);
 
     crypto_secretstream_xchacha20poly1305_push(
         &state->crypto_tx_state, out, NULL, (uint8_t *)&data_hdr, sizeof(data_hdr), NULL, 0, 0);
@@ -512,7 +512,7 @@ void protocol_response_ping(unsigned char out[CRYPT_PACKET_SIZE_PING], struct co
     struct protocol_ping ping_pkt;
 
     state->awaiting_pong++;
-    protocol_response(&ping_pkt, sizeof(ping_pkt), TYPE_PING);
+    protocol_response(state, &ping_pkt, sizeof(ping_pkt), TYPE_PING);
     create_timestamp(&state->last_ping_send, ping_pkt.timestamp, &state->last_ping_send_usec);
     ping_pkt.timestamp_usec = htobe64(state->last_ping_send_usec);
 
@@ -532,7 +532,7 @@ void protocol_response_pong(unsigned char out[CRYPT_PACKET_SIZE_PONG], struct co
 {
     struct protocol_pong pong_pkt;
 
-    protocol_response(&pong_pkt, sizeof(pong_pkt), TYPE_PONG);
+    protocol_response(state, &pong_pkt, sizeof(pong_pkt), TYPE_PONG);
     create_timestamp(&state->last_pong_send, pong_pkt.timestamp, &state->last_pong_send_usec);
     pong_pkt.timestamp_usec = htobe64(state->last_pong_send_usec);
 
@@ -569,6 +569,8 @@ static struct connection * new_connection(struct longterm_keypair const * const 
     create_timestamp(&c->last_pong_recv, NULL, &c->last_pong_recv_usec);
     create_timestamp(&c->last_pong_send, NULL, &c->last_pong_send_usec);
     c->latency_usec = 0.0;
+    c->total_bytes_recv = 0;
+    c->total_bytes_sent = 0;
     sodium_mlock(c, sizeof(*c));
 
     return c;

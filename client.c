@@ -212,7 +212,15 @@ __attribute__((noreturn)) static void cleanup_and_exit(struct event_base ** cons
                                                        struct connection ** const state,
                                                        int exit_code)
 {
+    char pretty_bytes_rx[16];
+    char pretty_bytes_tx[16];
+
     LOG(LP_DEBUG, "Cleanup and exit with exit code: %d", exit_code);
+    if (*state != NULL) {
+        LOG(NOTICE, "Closed connection; received %s; sent %s",
+            prettify_bytes_with_units(pretty_bytes_rx, sizeof(pretty_bytes_rx), (*state)->total_bytes_recv),
+            prettify_bytes_with_units(pretty_bytes_tx, sizeof(pretty_bytes_tx), (*state)->total_bytes_sent));
+    }
     *state = NULL;
     cleanup(ev_base, ev_sig, my_keypair);
     exit(exit_code);

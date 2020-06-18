@@ -155,6 +155,12 @@ enum recv_return protocol_request_pong(struct connection * const state,
 
 void on_disconnect(struct connection * const state)
 {
+    char pretty_bytes_rx[16];
+    char pretty_bytes_tx[16];
+
+    LOG(NOTICE, "Client closed connection; received %s; sent %s",
+        prettify_bytes_with_units(pretty_bytes_rx, sizeof(pretty_bytes_rx), state->total_bytes_recv),
+        prettify_bytes_with_units(pretty_bytes_tx, sizeof(pretty_bytes_tx), state->total_bytes_sent));
     (void)state;
 }
 
@@ -172,7 +178,6 @@ static void event_cb(struct bufferevent * bev, short events, void * con)
         return;
     }
     if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-        LOG(NOTICE, "Client closed connection");
         ev_disconnect(c);
         return;
     }

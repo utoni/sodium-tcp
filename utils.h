@@ -67,4 +67,23 @@ static inline void parse_cmdline(struct cmd_options * const opts, int argc, char
     }
 }
 
+static inline char * prettify_bytes_with_units(char * const out, size_t out_size,
+                                               unsigned long long bytes)
+{
+    static char const * const unit_prefixes[] = {"","Kilo","Mega","Giga","Tera"};
+    size_t const unit_prefixes_length = sizeof(unit_prefixes)/sizeof(unit_prefixes[0]);
+    unsigned char unit_prefixes_index = 0;
+    size_t const convert_bytes_every = 1024;
+
+    while (bytes / convert_bytes_every > 0 && unit_prefixes_index < unit_prefixes_length)
+    {
+        bytes /= convert_bytes_every;
+        unit_prefixes_index++;
+    }
+
+    snprintf(out, out_size, "%llu %sBytes", bytes, unit_prefixes[unit_prefixes_index]);
+
+    return out;
+}
+
 #endif
