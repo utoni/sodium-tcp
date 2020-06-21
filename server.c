@@ -68,16 +68,16 @@ enum recv_return protocol_request_client_auth(struct connection * const state,
     log_bin2hex_sodium(NOTICE, "Client AUTH with PublicKey", auth_pkt->client_publickey, sizeof(auth_pkt->client_publickey));
     if (init_crypto_server(state, auth_pkt->server_rx_header, sizeof(auth_pkt->server_rx_header)) != 0) {
         LOG(ERROR, "Client session keypair generation failed");
-        return RECV_FATAL;
+        return RECV_FATAL_CRYPTO_ERROR;
     }
 
     if (ev_protocol_server_helo(state, "Welcome.") != 0) {
         LOG(ERROR, "Server AUTH response failed");
-        return RECV_FATAL;
+        return RECV_FATAL_CALLBACK_ERROR;
     }
     if (ev_setup_generic_timer((struct ev_user_data *)state->user_data, PING_INTERVAL) != 0) {
         LOG(ERROR, "Timer init failed");
-        return RECV_FATAL;
+        return RECV_FATAL_CALLBACK_ERROR;
     }
 
     state->state = CONNECTION_AUTH_SUCCESS;
@@ -108,7 +108,7 @@ enum recv_return protocol_request_data(struct connection * const state,
     recv_data(data_pkt->payload, data_pkt->header.body_size);
     snprintf(response, sizeof(response), "DATA OK: RECEIVED %u BYTES", data_pkt->header.body_size);
     if (ev_protocol_data(state, (uint8_t *)response, sizeof(response)) != 0) {
-        return RECV_FATAL;
+        return RECV_FATAL_CALLBACK_ERROR;
     }
     return RECV_SUCCESS;
 }
@@ -130,7 +130,7 @@ enum recv_return protocol_request_ping(struct connection * const state,
     }
 
     if (ev_protocol_pong(state) != 0) {
-        return RECV_FATAL;
+        return RECV_FATAL_CALLBACK_ERROR;
     } else {
         return RECV_SUCCESS;
     }

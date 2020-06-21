@@ -73,9 +73,7 @@ static enum recv_return parse_protocol_timestamp(char const protocol_timestamp[P
     char timestamp_sz[PROTOCOL_TIME_STRLEN + 1];
     strncpy(timestamp_sz, protocol_timestamp, sizeof(timestamp_sz) - 1);
     timestamp_sz[PROTOCOL_TIME_STRLEN] = '\0';
-    if (strptime(timestamp_sz, "%a, %d %b %Y %T %z", dest) == NULL) {
-        return RECV_FATAL;
-    }
+    strptime(timestamp_sz, "%a, %d %b %Y %T %z", dest);
     return RECV_SUCCESS;
 }
 

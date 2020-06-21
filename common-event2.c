@@ -268,7 +268,7 @@ void ev_read_cb(struct bufferevent * bev, void * connection_state)
             case RECV_SUCCESS:
                 break;
             case RECV_FATAL:
-                LOG(ERROR, "Callback Fatal");
+                LOG(ERROR, "Internal error");
                 ev_disconnect(c);
                 return;
             case RECV_FATAL_UNAUTH:
@@ -281,6 +281,10 @@ void ev_read_cb(struct bufferevent * bev, void * connection_state)
                 return;
             case RECV_FATAL_REMOTE_WINDOW_SIZE:
                 LOG(ERROR, "Remote has a larger WINDOW_SIZE size than us.");
+                ev_disconnect(c);
+                return;
+            case RECV_FATAL_CALLBACK_ERROR:
+                LOG(ERROR, "Callback error");
                 ev_disconnect(c);
                 return;
             case RECV_CORRUPT_PACKET:

@@ -68,12 +68,12 @@ enum recv_return protocol_request_server_helo(struct connection * const state,
 
     if (init_crypto_client(state, helo_pkt->client_rx_header, sizeof(helo_pkt->client_rx_header)) != 0) {
         LOG(ERROR, "Client session keypair generation failed");
-        return RECV_FATAL;
+        return RECV_FATAL_CALLBACK_ERROR;
     }
 
     if (ev_setup_generic_timer((struct ev_user_data *)state->user_data, PING_INTERVAL) != 0) {
         LOG(ERROR, "Timer init failed");
-        return RECV_FATAL;
+        return RECV_FATAL_CALLBACK_ERROR;
     }
 
     send_data(state);
@@ -113,7 +113,7 @@ enum recv_return protocol_request_ping(struct connection * const state,
     }
 
     if (ev_protocol_pong(state) != 0) {
-        return RECV_FATAL;
+        return RECV_FATAL_CALLBACK_ERROR;
     } else {
         return RECV_SUCCESS;
     }
