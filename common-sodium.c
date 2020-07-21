@@ -94,23 +94,6 @@ int generate_session_keypair_sodium(struct connection * const state)
     return 0;
 }
 
-int init_sockaddr_inet(struct sockaddr_in * const sin,
-                       const char * const host,
-                       int port,
-                       char ip_str[INET6_ADDRSTRLEN + 1])
-{
-    memset(sin, 0, sizeof(*sin));
-    sin->sin_family = AF_INET;
-    sin->sin_port = htons(port);
-    if (inet_pton(sin->sin_family, host, &sin->sin_addr) <= 0 ||
-        inet_ntop(sin->sin_family, &sin->sin_addr, ip_str, INET6_ADDRSTRLEN) == NULL) {
-        LOG(ERROR, "Invalid host: %s", host);
-        return 1;
-    }
-
-    return 0;
-}
-
 int init_crypto_server(struct connection * const state,
                        unsigned char const * const server_rx_header,
                        size_t server_rx_header_size)

@@ -18,11 +18,6 @@ __attribute__((warn_unused_result)) struct longterm_keypair * generate_keypair_f
 
 __attribute__((warn_unused_result)) int generate_session_keypair_sodium(struct connection * const state);
 
-__attribute__((warn_unused_result)) int init_sockaddr_inet(struct sockaddr_in * const sin,
-                                                           const char * const host,
-                                                           int port,
-                                                           char ip_str[INET6_ADDRSTRLEN + 1]);
-
 __attribute__((warn_unused_result)) int init_crypto_server(struct connection * const state,
                                                            unsigned char const * const server_rx_header,
                                                            size_t server_rx_header_size);

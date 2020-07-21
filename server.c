@@ -285,12 +285,13 @@ __attribute__((noreturn)) static void cleanup_and_exit(struct event_base ** cons
 
 int main(int argc, char ** argv)
 {
+    struct addrinfo * connect_addresses = NULL;
+    struct addrinfo * ai;
+    int gai_errno;
     struct longterm_keypair * my_keypair = NULL;
     struct event_base * ev_base = NULL;
     struct event * ev_sig = NULL;
     struct evconnlistener * ev_listener = NULL;
-    struct sockaddr_in sin;
-
     char ip_str[INET6_ADDRSTRLEN + 1];
 
     parse_cmdline(&opts, argc, argv);
@@ -305,8 +306,14 @@ int main(int argc, char ** argv)
             return 1;
         }
     }
-    if (opts.port <= 0 || opts.port > 65535) {
-        LOG(ERROR, "Invalid port: %d", opts.port);
+    if (opts.host == NULL || opts.port == NULL) {
+        LOG(ERROR, "Invalid host/port");
+        return 2;
+    }
+    LOG(NOTICE, "Resolving %s:%s..", opts.host, opts.port);
+    gai_errno = hostname_to_address(opts.host, opts.port, &connect_addresses);
+    if (gai_errno != 0) {
+        LOG(ERROR, "Address/Service translation error for %s:%s: %s", opts.host, opts.port, gai_strerror(gai_errno));
         return 2;
     }
 
@@ -316,11 +323,6 @@ int main(int argc, char ** argv)
         LOG(ERROR, "Sodium init failed");
         return 2;
     }
-
-    if (init_sockaddr_inet(&sin, opts.host, opts.port, ip_str) != 0) {
-        return 3;
-    }
-    LOG(NOTICE, "Listen on %s:%u", ip_str, opts.port);
 
     if (opts.key_string != NULL) {
         my_keypair = generate_keypair_from_secretkey_hexstr_sodium(opts.key_string, opts.key_length);
@@ -351,17 +353,46 @@ int main(int argc, char ** argv)
         cleanup_and_exit(&ev_base, &ev_listener, &ev_sig, &my_keypair, 7);
     }
 
-    ev_listener = evconnlistener_new_bind(ev_base,
-                                          accept_conn_cb,
-                                          my_keypair,
-                                          LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
-                                          -1,
-                                          (struct sockaddr *)&sin,
-                                          sizeof(sin));
+    for (ai = connect_addresses; ai != NULL; ai = ai->ai_next) {
+        struct sockaddr * sa = NULL;
+        socklen_t sl = 0;
+
+        switch (ai->ai_family) {
+            case AF_INET:
+                sa = (struct sockaddr *)&((struct sockaddr_in *)ai->ai_addr)->sin_addr;
+                sl = sizeof(struct sockaddr_in);
+                break;
+            case AF_INET6:
+                sa = (struct sockaddr *)&((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr;
+                sl = sizeof(struct sockaddr_in6);
+                break;
+            default:
+                LOG(ERROR, "Unknown address family: %d", ai->ai_family);
+                cleanup_and_exit(&ev_base, &ev_listener, &ev_sig, &my_keypair, 8);
+        }
+        if (inet_ntop(ai->ai_family, sa, ip_str, sl) == NULL) {
+            LOG(WARNING, "Invalid IPv4 host");
+            continue;
+        }
+
+        LOG(NOTICE, "Listening on %s:%s", ip_str, opts.port);
+        ev_listener = evconnlistener_new_bind(ev_base,
+                                              accept_conn_cb,
+                                              my_keypair,
+                                              LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
+                                              -1, ai->ai_addr, ai->ai_addrlen);
+        if (ev_listener != NULL) {
+            break;
+        }
+    }
+    freeaddrinfo(connect_addresses);
+    connect_addresses = NULL;
+
     if (ev_listener == NULL) {
         LOG(ERROR, "Couldn't create listener: %s", strerror(errno));
         cleanup_and_exit(&ev_base, &ev_listener, &ev_sig, &my_keypair, 8);
     }
+
     evconnlistener_set_error_cb(ev_listener, accept_error_cb);
     event_base_dispatch(ev_base);
 

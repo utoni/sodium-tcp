@@ -1,9 +1,12 @@
 #ifndef UTILS_H
 #define UTILS_H 1
 
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 struct cmd_options {
@@ -19,7 +22,7 @@ struct cmd_options {
     /* server: listen port
      * client: remote port
      */
-    int port;
+    char * port;
     /* server: path to write to, received from client via PDU-type DATA
      * client: path to read from, send it via PDU-type DATA
      */
@@ -46,7 +49,7 @@ static inline void parse_cmdline(struct cmd_options * const opts, int argc, char
                 opts->host = strdup(optarg);
                 break;
             case 'p':
-                opts->port = atoi(optarg); /* meh, strtol is king */
+                opts->port = strdup(optarg);
                 break;
             case 'f':
                 opts->filepath = strdup(optarg);
@@ -59,8 +62,8 @@ static inline void parse_cmdline(struct cmd_options * const opts, int argc, char
     if (opts->host == NULL) {
         opts->host = strdup("127.0.0.1");
     }
-    if (opts->port == 0) {
-        opts->port = 5555;
+    if (opts->port == NULL) {
+        opts->port = strdup("5555");
     }
     if (opts->key_string != NULL) {
         opts->key_length = strlen(opts->key_string);
@@ -86,4 +89,22 @@ static inline char * prettify_bytes_with_units(char * const out, size_t out_size
     return out;
 }
 
+static inline int hostname_to_address(char const * const host, char const * const port,
+                                      struct addrinfo ** const result)
+{
+    int s;
+    struct addrinfo hints;
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    s = getaddrinfo(host, port, &hints, result);
+    if (s != 0) {
+        return s;
+    }
+
+    return 0;
+}
 #endif
