@@ -23,8 +23,8 @@ CFLAGS += -Wall -Wextra -Wstrict-prototypes -std=gnu11 $(EXTRA_CFLAGS) -D_GNU_SO
 		 $(shell $(PKG_CONFIG_BIN) --cflags libsodium) \
 		 $(shell $(PKG_CONFIG_BIN) --cflags libevent)
 
-HEADER_TARGETS = common-event2.h common-sodium.h logging.h protocol.h
-BUILD_TARGETS = common-event2.o common-sodium.o logging.o protocol.o
+HEADER_TARGETS = utils.h common-event2.h common-sodium.h logging.h protocol.h
+BUILD_TARGETS = utils.o common-event2.o common-sodium.o logging.o protocol.o
 
 SO_NAME=libsodium-tcp.so
 APP_HEADER_TARGETS = $(HEADER_TARGETS)
