@@ -65,7 +65,10 @@ enum recv_return protocol_request_client_auth(struct connection * const state,
         return RECV_FATAL_UNAUTH;
     }
 
-    log_bin2hex_sodium(NOTICE, "Client AUTH with PublicKey", auth_pkt->client_publickey, sizeof(auth_pkt->client_publickey));
+    log_bin2hex_sodium(NOTICE,
+                       "Client AUTH with PublicKey",
+                       auth_pkt->client_publickey,
+                       sizeof(auth_pkt->client_publickey));
     if (init_crypto_server(state, auth_pkt->server_rx_header, sizeof(auth_pkt->server_rx_header)) != 0) {
         LOG(ERROR, "Client session keypair generation failed");
         return RECV_FATAL_CRYPTO_ERROR;
@@ -158,7 +161,8 @@ void on_disconnect(struct connection * const state)
     char pretty_bytes_rx[16];
     char pretty_bytes_tx[16];
 
-    LOG(NOTICE, "Client closed connection; received %s; sent %s",
+    LOG(NOTICE,
+        "Client closed connection; received %s; sent %s",
         prettify_bytes_with_units(pretty_bytes_rx, sizeof(pretty_bytes_rx), state->total_bytes_recv),
         prettify_bytes_with_units(pretty_bytes_tx, sizeof(pretty_bytes_tx), state->total_bytes_sent));
     (void)state;
@@ -380,7 +384,9 @@ int main(int argc, char ** argv)
                                               accept_conn_cb,
                                               my_keypair,
                                               LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
-                                              -1, ai->ai_addr, ai->ai_addrlen);
+                                              -1,
+                                              ai->ai_addr,
+                                              ai->ai_addrlen);
         if (ev_listener != NULL) {
             break;
         }

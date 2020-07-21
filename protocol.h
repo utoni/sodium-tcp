@@ -11,7 +11,7 @@
 #define PROTOCOL_MAGIC 0xBAADC0DE
 #define PROTOCOL_VERSION 0xDEADCAFE
 #define PROTOCOL_TIME_STRLEN 32
-#define WINDOW_SIZE (65535*2)
+#define WINDOW_SIZE (65535 * 2)
 #if WINDOW_SIZE > (UINT_MAX)
 #error "Window size is limited by sizeof(header.body_size)"
 #endif

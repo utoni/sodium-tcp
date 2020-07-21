@@ -411,7 +411,8 @@ enum recv_return process_received(struct connection * const state,
  **************************/
 
 static void protocol_response(struct connection * const state,
-                              void * const buffer, uint32_t body_and_payload_size,
+                              void * const buffer,
+                              uint32_t body_and_payload_size,
                               enum header_types type)
 {
     struct protocol_header * const header = (struct protocol_header *)buffer;

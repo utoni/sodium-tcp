@@ -4,8 +4,10 @@
 #include "logging.h"
 #include "protocol.h"
 
-void log_bin2hex_sodium(enum log_priority log_prio, char const * const prefix,
-                        uint8_t const * const buffer, size_t size)
+void log_bin2hex_sodium(enum log_priority log_prio,
+                        char const * const prefix,
+                        uint8_t const * const buffer,
+                        size_t size)
 {
     char hexstr[2 * size + 1];
 

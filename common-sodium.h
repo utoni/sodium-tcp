@@ -9,7 +9,10 @@
 
 struct connection;
 
-void log_bin2hex_sodium(enum log_priority log_prio, char const * const prefix, uint8_t const * const buffer, size_t size);
+void log_bin2hex_sodium(enum log_priority log_prio,
+                        char const * const prefix,
+                        uint8_t const * const buffer,
+                        size_t size);
 
 __attribute__((warn_unused_result)) struct longterm_keypair * generate_keypair_sodium(void);
 

@@ -41,7 +41,9 @@ static void send_data(struct connection * const state)
             close(data_fd);
             data_fd = -1;
         } else {
-            LOG(NOTICE, "Send DATA: %zd bytes, buffer capacity %0.2f%% unused", bytes_read,
+            LOG(NOTICE,
+                "Send DATA: %zd bytes, buffer capacity %0.2f%% unused",
+                bytes_read,
                 100.0f - ((float)bytes_read / sizeof(buf)) * 100.0f);
         }
     }
@@ -217,7 +219,8 @@ __attribute__((noreturn)) static void cleanup_and_exit(struct event_base ** cons
 
     LOG(LP_DEBUG, "Cleanup and exit with exit code: %d", exit_code);
     if (*state != NULL) {
-        LOG(NOTICE, "Closed connection; received %s; sent %s",
+        LOG(NOTICE,
+            "Closed connection; received %s; sent %s",
             prettify_bytes_with_units(pretty_bytes_rx, sizeof(pretty_bytes_rx), (*state)->total_bytes_recv),
             prettify_bytes_with_units(pretty_bytes_tx, sizeof(pretty_bytes_tx), (*state)->total_bytes_sent));
     }
