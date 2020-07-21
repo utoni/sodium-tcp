@@ -19,7 +19,7 @@ DEBUG_CFLAGS =
 EXTRA_CFLAGS = -Werror -Os
 endif
 
-CFLAGS += -Wall -Wextra -std=gnu11 $(EXTRA_CFLAGS) -D_GNU_SOURCE $(DEBUG_CFLAGS) $(SANITIZER_CFLAGS) \
+CFLAGS += -Wall -Wextra -Wstrict-prototypes -std=gnu11 $(EXTRA_CFLAGS) -D_GNU_SOURCE $(DEBUG_CFLAGS) $(SANITIZER_CFLAGS) -fstrict-aliasing \
 		 $(shell $(PKG_CONFIG_BIN) --cflags libsodium) \
 		 $(shell $(PKG_CONFIG_BIN) --cflags libevent)
 
