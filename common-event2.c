@@ -7,6 +7,7 @@
 #include "common-event2.h"
 #include "logging.h"
 #include "protocol.h"
+#include "utils.h"
 
 int ev_auth_timeout(struct ev_user_data * const user_data)
 {
@@ -19,6 +20,7 @@ int ev_add_timer(struct ev_user_data * const user_data, time_t trigger_after)
 {
     struct timeval tv;
 
+    LOG(LP_DEBUG, "Added timer event, next trigger in %llus", (unsigned long long int)trigger_after);
     tv.tv_sec = trigger_after;
     tv.tv_usec = 0;
     return event_add(user_data->generic_timer, &tv);
@@ -29,12 +31,9 @@ int ev_del_timer(struct ev_user_data * const user_data)
     return event_del(user_data->generic_timer);
 }
 
-static double time_passed(struct tm * const tm)
+static double time_passed(double last_time)
 {
-    time_t cur = time(NULL);
-    time_t chk = timegm(tm);
-
-    return difftime(cur, chk);
+    return create_timestamp() - last_time;
 }
 
 int ev_default_timeout(struct ev_user_data * const user_data)
@@ -44,16 +43,15 @@ int ev_default_timeout(struct ev_user_data * const user_data)
         ev_disconnect(user_data->state);
         return 0;
     }
-
-    if (time_passed(&user_data->state->last_ping_recv) > PING_INTERVAL ||
-        time_passed(&user_data->state->last_ping_send) > PING_INTERVAL) {
+    if (time_passed(user_data->state->last_ping_recv) > PING_INTERVAL ||
+        time_passed(user_data->state->last_ping_send) > PING_INTERVAL) {
         LOG(NOTICE, "Sending PING");
         if (ev_protocol_ping(user_data->state) != RECV_SUCCESS) {
             LOG(WARNING, "Could not send PING");
             return 1;
         }
     }
-    if (ev_add_timer(user_data, random() % PING_INTERVAL) != 0) {
+    if (ev_add_timer(user_data, PING_INTERVAL + (random() % PING_INTERVAL)) != 0) {
         return 1;
     }
     return 0;
@@ -208,13 +206,14 @@ int ev_protocol_ping(struct connection * const state)
 {
     int result;
     unsigned char ping_pkt_crypted[CRYPT_PACKET_SIZE_PING];
-    char timestamp[PROTOCOL_TIME_STRLEN];
+    char timestamp[TIMESTAMP_STRLEN];
     struct ev_user_data * user_data = (struct ev_user_data *)state->user_data;
 
     protocol_response_ping(ping_pkt_crypted, state);
-    if (strftime(timestamp, PROTOCOL_TIME_STRLEN, "%a, %d %b %Y %T %z", &state->last_ping_send) > 0) {
-        LOG(LP_DEBUG, "Sending PING with ts %s / %lluus", timestamp, state->last_ping_send_usec);
-    }
+
+    strftime_local(state->last_ping_send, timestamp, sizeof(timestamp));
+    LOG(LP_DEBUG, "Sending PING with ts %.09lf: %s / %lluns",
+        state->last_ping_send, timestamp, extract_nsecs(state->last_ping_send));
     result = evbuffer_add(bufferevent_get_output(user_data->bev), ping_pkt_crypted, sizeof(ping_pkt_crypted));
     return result;
 }
@@ -223,13 +222,13 @@ int ev_protocol_pong(struct connection * const state)
 {
     int result;
     unsigned char pong_pkt_crypted[CRYPT_PACKET_SIZE_PONG];
-    char timestamp[PROTOCOL_TIME_STRLEN];
+    char timestamp[TIMESTAMP_STRLEN];
     struct ev_user_data * user_data = (struct ev_user_data *)state->user_data;
 
     protocol_response_pong(pong_pkt_crypted, state);
-    if (strftime(timestamp, PROTOCOL_TIME_STRLEN, "%a, %d %b %Y %T %z", &state->last_pong_send) > 0) {
-        LOG(LP_DEBUG, "Sending PONG with ts %s / %lluus", timestamp, state->last_pong_send_usec);
-    }
+    strftime_local(state->last_pong_send, timestamp, sizeof(timestamp));
+    LOG(LP_DEBUG, "Sending PONG with ts %.09lf: %s / %lluns",
+        state->last_pong_send, timestamp, extract_nsecs(state->last_pong_send));
     result = evbuffer_add(bufferevent_get_output(user_data->bev), pong_pkt_crypted, sizeof(pong_pkt_crypted));
     return result;
 }
@@ -326,7 +325,7 @@ static void event_to_string(char ** buffer, size_t * const buffer_size, const ch
     int written = snprintf(*buffer, *buffer_size, "%s, ", str);
     if (written > 0) {
         *buffer += written;
-        *buffer_size -= written;
+        *buffer_size -= (size_t)written;
     }
 }
 

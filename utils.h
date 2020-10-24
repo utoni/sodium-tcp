@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 
+#define TIMESTAMP_STRLEN 32
+
 struct cmd_options {
     /* server: private key
      * client: server public key
@@ -30,5 +32,7 @@ void parse_cmdline(struct cmd_options * const opts, int argc, char ** const argv
 char * prettify_bytes_with_units(char * const out, size_t out_size, unsigned long long bytes);
 
 int hostname_to_address(char const * const host, char const * const port, struct addrinfo ** const result);
+
+void strftime_local(double time_in_secs, char * const out, size_t out_size);
 
 #endif

@@ -121,15 +121,15 @@ enum recv_return protocol_request_ping(struct connection * const state,
                                        size_t * const processed)
 {
     struct protocol_ping const * const ping_pkt = (struct protocol_ping *)buffer;
+    char ts_str[TIMESTAMP_STRLEN];
+    double ts = to_timestamp(be64toh(ping_pkt->timestamp.sec), ntohl(ping_pkt->timestamp.nsec));
 
     (void)processed;
-    LOG(NOTICE,
-        "Received PING with timestamp: %.*s / %lluus",
-        sizeof(ping_pkt->timestamp),
-        ping_pkt->timestamp,
-        state->last_ping_recv_usec);
-    if (state->latency_usec > 0.0) {
-        LOG(NOTICE, "PING-PONG latency: %.02lfms", state->latency_usec / 1000.0);
+    strftime_local(ts, ts_str, sizeof(ts_str));
+    LOG(NOTICE, "Received PING with timestamp %.09lfs: %s / %lluns",
+        ts, ts_str, extract_nsecs(ts));
+    if (state->latency > 0.0f) {
+        LOG(NOTICE, "PING-PONG latency: %.09lfs", state->latency);
     }
 
     if (ev_protocol_pong(state) != 0) {
@@ -144,14 +144,18 @@ enum recv_return protocol_request_pong(struct connection * const state,
                                        size_t * const processed)
 {
     struct protocol_pong const * const pong_pkt = (struct protocol_pong *)buffer;
+    char ts_str[TIMESTAMP_STRLEN];
+    double ts = to_timestamp(be64toh(pong_pkt->timestamp.sec), ntohl(pong_pkt->timestamp.nsec));
 
     (void)processed;
-    LOG(NOTICE,
-        "Received PONG with timestamp: %.*s / %lluus / %zu outstanding PONG's",
-        sizeof(pong_pkt->timestamp),
-        pong_pkt->timestamp,
-        state->last_pong_recv_usec,
-        state->awaiting_pong);
+    strftime_local(ts, ts_str, sizeof(ts_str));
+    LOG(NOTICE, "Received PONG with timestamp %.09lfs: %s / %lluns / %zu outstanding PONG's",
+        ts, ts_str, extract_nsecs(ts), state->awaiting_pong);
+
+    if (state->awaiting_pong > 3) {
+        LOG(ERROR, "Waiting for more than 3 PONG's, disconnecting..");
+        return RECV_FATAL_CALLBACK_ERROR;
+    }
 
     return RECV_SUCCESS;
 }
@@ -386,7 +390,7 @@ int main(int argc, char ** argv)
                                               LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
                                               -1,
                                               ai->ai_addr,
-                                              ai->ai_addrlen);
+                                              (int)ai->ai_addrlen);
         if (ev_listener != NULL) {
             break;
         }

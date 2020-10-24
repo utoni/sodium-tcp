@@ -67,14 +67,32 @@ static size_t calculate_min_recv_size(enum header_types type, size_t size)
     return 0;
 }
 
-static enum recv_return parse_protocol_timestamp(char const protocol_timestamp[PROTOCOL_TIME_STRLEN],
-                                                 struct tm * const dest)
+double create_timestamp(void)
 {
-    char timestamp_sz[PROTOCOL_TIME_STRLEN + 1];
-    strncpy(timestamp_sz, protocol_timestamp, sizeof(timestamp_sz) - 1);
-    timestamp_sz[PROTOCOL_TIME_STRLEN] = '\0';
-    strptime(timestamp_sz, "%a, %d %b %Y %T %z", dest);
-    return RECV_SUCCESS;
+    struct timespec ts;
+    int err = clock_gettime(CLOCK_REALTIME, &ts);
+    double decimal_places;
+
+    if (err != 0) {
+        return 0.0f;
+    }
+
+    decimal_places = (double)ts.tv_nsec * 1e-9;
+    return (double)ts.tv_sec + decimal_places;
+}
+
+double to_timestamp(uint64_t time_in_secs, uint32_t nano_secs)
+{
+    double r = (double)time_in_secs;
+
+    return r + ((double)nano_secs * 1e-9);
+}
+
+suseconds_t extract_nsecs(double time_in_secs)
+{
+    double s = (double)((time_t)time_in_secs);
+
+    return (suseconds_t)((time_in_secs - s) / 1e-9);
 }
 
 static enum recv_return process_body(struct connection * const state,
@@ -83,7 +101,6 @@ static enum recv_return process_body(struct connection * const state,
                                      size_t * const processed)
 {
     struct protocol_header const * const hdr = (struct protocol_header *)decrypted->pointer;
-    enum recv_return retval;
 
     (void)encrypted;
     switch (hdr->pdu_type) {
@@ -118,27 +135,19 @@ static enum recv_return process_body(struct connection * const state,
         case TYPE_PING: {
             struct protocol_ping const * const ping_pkt = (struct protocol_ping *)hdr;
 
-            retval = parse_protocol_timestamp(ping_pkt->timestamp, &state->last_ping_recv);
-            if (retval != RECV_SUCCESS) {
-                return retval;
-            }
-            state->last_ping_recv_usec = be64toh(ping_pkt->timestamp_usec);
+            state->last_ping_recv = to_timestamp(be64toh(ping_pkt->timestamp.sec), ntohl(ping_pkt->timestamp.nsec));
             *processed += CRYPT_PACKET_SIZE_PING;
             break;
         }
         case TYPE_PONG: {
             struct protocol_pong const * const pong_pkt = (struct protocol_pong *)hdr;
 
-            retval = parse_protocol_timestamp(pong_pkt->timestamp, &state->last_pong_recv);
-            if (retval != RECV_SUCCESS) {
-                return retval;
-            }
+            state->last_pong_recv = to_timestamp(be64toh(pong_pkt->timestamp.sec), ntohl(pong_pkt->timestamp.nsec));
             if (state->awaiting_pong == 0) {
                 return RECV_FATAL;
             }
             state->awaiting_pong--;
-            state->last_pong_recv_usec = be64toh(pong_pkt->timestamp_usec);
-            state->latency_usec = state->last_pong_recv_usec - state->last_ping_send_usec;
+            state->latency = state->last_pong_recv - state->last_ping_send;
             *processed += CRYPT_PACKET_SIZE_PONG;
             break;
         }
@@ -157,7 +166,7 @@ static enum recv_return run_protocol_callback(struct connection * const state,
                                               size_t * const processed)
 {
     struct protocol_header const * const hdr = (struct protocol_header *)decrypted->pointer;
-    enum header_types type = (enum header_types)hdr->pdu_type;
+    enum header_types type = hdr->pdu_type;
     size_t min_size = 0;
     uint32_t size = hdr->body_size;
 
@@ -198,13 +207,13 @@ static enum recv_return run_protocol_callback(struct connection * const state,
 static void header_ntoh(struct protocol_header * const hdr)
 {
     hdr->magic = ntohl(hdr->magic);
-    hdr->pdu_type = ntohs(hdr->pdu_type);
+    hdr->pdu_type = ntohl(hdr->pdu_type);
     hdr->body_size = ntohl(hdr->body_size);
 }
 
 static enum recv_return validate_header(struct protocol_header const * const hdr, size_t buffer_size)
 {
-    enum header_types type = (enum header_types)hdr->pdu_type;
+    enum header_types type = hdr->pdu_type;
     uint32_t size;
 
     if (hdr->magic != PROTOCOL_MAGIC) {
@@ -418,7 +427,7 @@ static void protocol_response(struct connection * const state,
     struct protocol_header * const header = (struct protocol_header *)buffer;
 
     header->magic = htonl(PROTOCOL_MAGIC);
-    header->pdu_type = htons((uint16_t)type);
+    header->pdu_type = htonl(type);
     header->body_size = htonl(body_and_payload_size - sizeof(*header));
 
     state->total_bytes_sent += (sizeof(*header) + body_and_payload_size);
@@ -492,32 +501,15 @@ void protocol_response_data(uint8_t * out,
         &state->crypto_tx_state, CRYPT_PACKET_POINTER_AFTER_HEADER(out), NULL, payload, payload_size, NULL, 0, 0);
 }
 
-static int create_timestamp(struct tm * const timestamp,
-                            char timestamp_str[PROTOCOL_TIME_STRLEN],
-                            suseconds_t * const usec)
-{
-    time_t ts;
-    struct timeval ts_val;
-
-    gettimeofday(&ts_val, NULL);
-    *usec = ts_val.tv_usec;
-    ts = time(NULL);
-    gmtime_r(&ts, timestamp);
-
-    if (timestamp_str) {
-        return strftime(timestamp_str, PROTOCOL_TIME_STRLEN, "%a, %d %b %Y %T %z", timestamp);
-    }
-    return 0;
-}
-
 void protocol_response_ping(unsigned char out[CRYPT_PACKET_SIZE_PING], struct connection * const state)
 {
     struct protocol_ping ping_pkt;
 
     state->awaiting_pong++;
     protocol_response(state, &ping_pkt, sizeof(ping_pkt), TYPE_PING);
-    create_timestamp(&state->last_ping_send, ping_pkt.timestamp, &state->last_ping_send_usec);
-    ping_pkt.timestamp_usec = htobe64(state->last_ping_send_usec);
+    state->last_ping_send = create_timestamp();
+    ping_pkt.timestamp.sec = htobe64(state->last_ping_send);
+    ping_pkt.timestamp.nsec = htonl(extract_nsecs(state->last_ping_send));
 
     crypto_secretstream_xchacha20poly1305_push(
         &state->crypto_tx_state, &out[0], NULL, (uint8_t *)&ping_pkt.header, sizeof(ping_pkt.header), NULL, 0, 0);
@@ -536,8 +528,9 @@ void protocol_response_pong(unsigned char out[CRYPT_PACKET_SIZE_PONG], struct co
     struct protocol_pong pong_pkt;
 
     protocol_response(state, &pong_pkt, sizeof(pong_pkt), TYPE_PONG);
-    create_timestamp(&state->last_pong_send, pong_pkt.timestamp, &state->last_pong_send_usec);
-    pong_pkt.timestamp_usec = htobe64(state->last_pong_send_usec);
+    state->last_pong_send = create_timestamp();
+    pong_pkt.timestamp.sec = htobe64(state->last_pong_send);
+    pong_pkt.timestamp.nsec = htonl(extract_nsecs(state->last_pong_send));
 
     crypto_secretstream_xchacha20poly1305_push(
         &state->crypto_tx_state, &out[0], NULL, (uint8_t *)&pong_pkt.header, sizeof(pong_pkt.header), NULL, 0, 0);
@@ -567,11 +560,9 @@ static struct connection * new_connection(struct longterm_keypair const * const 
     c->session_keys = NULL;
     c->my_keypair = my_keypair;
     c->user_data = NULL;
-    create_timestamp(&c->last_ping_recv, NULL, &c->last_ping_recv_usec);
-    create_timestamp(&c->last_ping_send, NULL, &c->last_ping_send_usec);
-    create_timestamp(&c->last_pong_recv, NULL, &c->last_pong_recv_usec);
-    create_timestamp(&c->last_pong_send, NULL, &c->last_pong_send_usec);
-    c->latency_usec = 0.0;
+
+    c->last_ping_recv = c->last_ping_send = c->last_pong_recv = c->last_pong_send = create_timestamp();
+    c->latency = 0.0;
     c->total_bytes_recv = 0;
     c->total_bytes_sent = 0;
     sodium_mlock(c, sizeof(*c));

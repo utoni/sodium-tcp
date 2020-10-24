@@ -10,7 +10,6 @@
 #define PROTOCOL_ATTRIBUTES __attribute__((packed))
 #define PROTOCOL_MAGIC 0xBAADC0DE
 #define PROTOCOL_VERSION 0xDEADCAFE
-#define PROTOCOL_TIME_STRLEN 32
 #define WINDOW_SIZE (65535 * 2)
 #if WINDOW_SIZE > (UINT_MAX)
 #error "Window size is limited by sizeof(header.body_size)"
@@ -90,14 +89,18 @@ struct protocol_data {
 
 struct protocol_ping {
     struct protocol_header header;
-    char timestamp[PROTOCOL_TIME_STRLEN];
-    uint64_t timestamp_usec;
+    struct {
+        uint64_t sec;
+        uint32_t nsec;
+    } timestamp;
 } PROTOCOL_ATTRIBUTES;
 
 struct protocol_pong {
     struct protocol_header header;
-    char timestamp[PROTOCOL_TIME_STRLEN];
-    uint64_t timestamp_usec;
+    struct {
+        uint64_t sec;
+        uint32_t nsec;
+    } timestamp;
 } PROTOCOL_ATTRIBUTES;
 
 enum state { CONNECTION_INVALID = 0, CONNECTION_NEW, CONNECTION_AUTH_SUCCESS };
@@ -130,17 +133,11 @@ struct connection {
     /* nonce must be incremented before sending or comparing a remote received one */
     uint8_t last_nonce[crypto_box_NONCEBYTES];
 
-    struct tm last_ping_recv;
-    struct tm last_ping_send;
-    struct tm last_pong_recv;
-    struct tm last_pong_send;
-
-    suseconds_t last_ping_recv_usec;
-    suseconds_t last_ping_send_usec;
-    suseconds_t last_pong_recv_usec;
-    suseconds_t last_pong_send_usec;
-
-    double latency_usec;
+    double last_ping_recv;
+    double last_ping_send;
+    double last_pong_recv;
+    double last_pong_send;
+    double latency;
 
     uint64_t total_bytes_recv;
     uint64_t total_bytes_sent;
@@ -194,9 +191,9 @@ extern enum recv_return protocol_request_pong(struct connection * const state,
                                               struct protocol_header const * const buffer,
                                               size_t * const processed);
 
-/*******************************
+/**************************
  * PDU send functionality *
- *******************************/
+ **************************/
 
 void protocol_response_client_auth(unsigned char out[CRYPT_PACKET_SIZE_CLIENT_AUTH],
                                    struct connection * const state,
@@ -219,5 +216,12 @@ void protocol_response_pong(unsigned char out[CRYPT_PACKET_SIZE_PONG], struct co
 
 struct connection * new_connection_from_client(struct longterm_keypair const * const my_keypair);
 struct connection * new_connection_to_server(struct longterm_keypair const * const my_keypair);
+
+/***********************
+ * timestamp functions *
+ ***********************/
+double create_timestamp(void);
+double to_timestamp(uint64_t time_in_secs, uint32_t nano_secs);
+suseconds_t extract_nsecs(double time_in_secs);
 
 #endif

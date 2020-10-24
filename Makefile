@@ -19,7 +19,7 @@ DEBUG_CFLAGS =
 EXTRA_CFLAGS = -Werror -Os
 endif
 
-CFLAGS += -Wall -Wextra -Wstrict-prototypes -std=gnu11 $(EXTRA_CFLAGS) -D_GNU_SOURCE $(DEBUG_CFLAGS) $(SANITIZER_CFLAGS) -fstrict-aliasing \
+CFLAGS += -Wall -Wextra -Wsign-conversion -Wstrict-prototypes -std=gnu11 $(EXTRA_CFLAGS) -D_GNU_SOURCE $(DEBUG_CFLAGS) $(SANITIZER_CFLAGS) -fstrict-aliasing \
 		 $(shell $(PKG_CONFIG_BIN) --cflags libsodium) \
 		 $(shell $(PKG_CONFIG_BIN) --cflags libevent)
 
@@ -81,7 +81,6 @@ help:
 	@echo "\tENABLE_DEBUG=$(ENABLE_DEBUG) \\"
 	@echo "\tENABLE_STATIC=$(ENABLE_STATIC) \\"
 	@echo "\tENABLE_SANITIZER=$(ENABLE_SANITIZER) \\"
-	@echo "\tBUILD_STATIC=$(BUILD_STATIC) \\"
 	@echo "\tBUILD_SHARED=$(BUILD_SHARED) \\"
 	@echo "\tDESTDIR=$(DESTDIR) \\"
 	@echo "\tPREFIX=$(PREFIX)"

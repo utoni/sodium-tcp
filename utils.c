@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "utils.h"
@@ -81,4 +82,27 @@ int hostname_to_address(char const * const host, char const * const port, struct
     }
 
     return 0;
+}
+
+void strftime_local(double time_in_secs, char * const out, size_t out_size)
+{
+    time_t t = (time_t)time_in_secs;
+    struct tm r;
+
+    if (localtime_r(&t, &r) == NULL)
+    {
+        out[0] = '\0';
+        return;
+    }
+
+    if (out_size > TIMESTAMP_STRLEN)
+    {
+        out_size = TIMESTAMP_STRLEN;
+    }
+
+    if (strftime(out, out_size, "%a, %d %b %Y %T %z", &r) <= 0)
+    {
+        out[0] = '\0';
+        return;
+    }
 }
