@@ -135,14 +135,16 @@ static enum recv_return process_body(struct connection * const state,
         case TYPE_PING: {
             struct protocol_ping const * const ping_pkt = (struct protocol_ping *)hdr;
 
-            state->last_ping_recv = to_timestamp(be64toh(ping_pkt->timestamp.sec), ntohl(ping_pkt->timestamp.nsec));
+            state->last_ping_recv = create_timestamp();
+            state->last_ping_recv_remote = to_timestamp(be64toh(ping_pkt->timestamp.sec), ntohl(ping_pkt->timestamp.nsec));
             *processed += CRYPT_PACKET_SIZE_PING;
             break;
         }
         case TYPE_PONG: {
             struct protocol_pong const * const pong_pkt = (struct protocol_pong *)hdr;
 
-            state->last_pong_recv = to_timestamp(be64toh(pong_pkt->timestamp.sec), ntohl(pong_pkt->timestamp.nsec));
+            state->last_pong_recv = create_timestamp();
+            state->last_pong_recv_remote = to_timestamp(be64toh(pong_pkt->timestamp.sec), ntohl(pong_pkt->timestamp.nsec));
             if (state->awaiting_pong == 0) {
                 return RECV_FATAL;
             }
@@ -561,6 +563,8 @@ static struct connection * new_connection(struct longterm_keypair const * const 
     c->my_keypair = my_keypair;
     c->user_data = NULL;
 
+    c->last_ping_recv_remote = 0.0;
+    c->last_pong_recv_remote = 0.0;
     c->last_ping_recv = c->last_ping_send = c->last_pong_recv = c->last_pong_send = create_timestamp();
     c->latency = 0.0;
     c->total_bytes_recv = 0;

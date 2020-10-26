@@ -128,9 +128,6 @@ enum recv_return protocol_request_ping(struct connection * const state,
     strftime_local(ts, ts_str, sizeof(ts_str));
     LOG(NOTICE, "Received PING with timestamp %.09lfs: %s / %uns",
         ts, ts_str, extract_nsecs(ts));
-    if (state->latency > 0.0f) {
-        LOG(NOTICE, "PING-PONG latency: %.09lfs", state->latency);
-    }
 
     if (ev_protocol_pong(state) != 0) {
         return RECV_FATAL_CALLBACK_ERROR;
@@ -151,6 +148,10 @@ enum recv_return protocol_request_pong(struct connection * const state,
     strftime_local(ts, ts_str, sizeof(ts_str));
     LOG(NOTICE, "Received PONG with timestamp %.09lfs: %s / %uns / %zu outstanding PONG's",
         ts, ts_str, extract_nsecs(ts), state->awaiting_pong);
+
+    if (state->latency > 0.0) {
+        LOG(NOTICE, "PING-PONG latency: %.09lfs", state->latency);
+    }
 
     if (state->awaiting_pong > 3) {
         LOG(ERROR, "Waiting for more than 3 PONG's, disconnecting..");

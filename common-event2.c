@@ -6,17 +6,15 @@
 
 #include "common-event2.h"
 #include "logging.h"
-#include "protocol.h"
 #include "utils.h"
 
-int ev_auth_timeout(struct ev_user_data * const user_data)
+static void ev_auth_timeout(struct ev_user_data * const user_data)
 {
     LOG(NOTICE, "Authentication timeout");
     ev_disconnect(user_data->state);
-    return 0;
 }
 
-int ev_add_timer(struct ev_user_data * const user_data, time_t trigger_after)
+static int ev_add_timer(struct ev_user_data * const user_data, time_t trigger_after)
 {
     struct timeval tv;
 
@@ -26,9 +24,9 @@ int ev_add_timer(struct ev_user_data * const user_data, time_t trigger_after)
     return event_add(user_data->generic_timer, &tv);
 }
 
-int ev_del_timer(struct ev_user_data * const user_data)
+static void ev_del_timer(struct ev_user_data * const user_data)
 {
-    return event_del(user_data->generic_timer);
+    event_del(user_data->generic_timer);
 }
 
 static double time_passed(double last_time)
@@ -212,8 +210,11 @@ int ev_protocol_ping(struct connection * const state)
     protocol_response_ping(ping_pkt_crypted, state);
 
     strftime_local(state->last_ping_send, timestamp, sizeof(timestamp));
-    LOG(LP_DEBUG, "Sending PING with ts %.09lf: %s / %uns",
-        state->last_ping_send, timestamp, extract_nsecs(state->last_ping_send));
+    LOG(LP_DEBUG,
+        "Sending PING with ts %.09lf: %s / %uns",
+        state->last_ping_send,
+        timestamp,
+        extract_nsecs(state->last_ping_send));
     result = evbuffer_add(bufferevent_get_output(user_data->bev), ping_pkt_crypted, sizeof(ping_pkt_crypted));
     return result;
 }
@@ -227,8 +228,11 @@ int ev_protocol_pong(struct connection * const state)
 
     protocol_response_pong(pong_pkt_crypted, state);
     strftime_local(state->last_pong_send, timestamp, sizeof(timestamp));
-    LOG(LP_DEBUG, "Sending PONG with ts %.09lf: %s / %uns",
-        state->last_pong_send, timestamp, extract_nsecs(state->last_pong_send));
+    LOG(LP_DEBUG,
+        "Sending PONG with ts %.09lf: %s / %uns",
+        state->last_pong_send,
+        timestamp,
+        extract_nsecs(state->last_pong_send));
     result = evbuffer_add(bufferevent_get_output(user_data->bev), pong_pkt_crypted, sizeof(pong_pkt_crypted));
     return result;
 }

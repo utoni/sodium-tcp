@@ -135,10 +135,13 @@ struct connection {
     /* nonce must be incremented before sending or comparing a remote received one */
     uint8_t last_nonce[crypto_box_NONCEBYTES];
 
-    double last_ping_recv;
+    double last_ping_recv_remote;
+    double last_pong_recv_remote;
+
     double last_ping_send;
-    double last_pong_recv;
+    double last_ping_recv;
     double last_pong_send;
+    double last_pong_recv;
     double latency;
 
     uint64_t total_bytes_recv;
