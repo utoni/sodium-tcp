@@ -15,6 +15,8 @@
 #error "Window size is limited by sizeof(header.body_size)"
 #endif
 
+#define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+
 #define CRYPTO_BYTES_PREAUTH crypto_box_SEALBYTES
 #define CRYPTO_BYTES_POSTAUTH crypto_secretstream_xchacha20poly1305_ABYTES
 #define PLAIN_PACKET_HEADER_SIZE ((size_t)sizeof(struct protocol_header))
@@ -169,27 +171,27 @@ enum recv_return {
  * PDU receive functionality *
  *****************************/
 
-enum recv_return process_received(struct connection * const state,
-                                  uint8_t const * const buffer,
-                                  size_t * const buffer_size);
+enum recv_return WARN_UNUSED_RESULT process_received(struct connection * const state,
+                                                     uint8_t const * const buffer,
+                                                     size_t * const buffer_size);
 
 /* The following functions have to be implemented in your application e.g. client/server. */
 
-extern enum recv_return protocol_request_client_auth(struct connection * const state,
-                                                     struct protocol_header const * const buffer,
-                                                     size_t * const processed);
-extern enum recv_return protocol_request_server_helo(struct connection * const,
-                                                     struct protocol_header const * const buffer,
-                                                     size_t * const processed);
-extern enum recv_return protocol_request_data(struct connection * const state,
-                                              struct protocol_header const * const buffer,
-                                              size_t * const processed);
-extern enum recv_return protocol_request_ping(struct connection * const state,
-                                              struct protocol_header const * const buffer,
-                                              size_t * const processed);
-extern enum recv_return protocol_request_pong(struct connection * const state,
-                                              struct protocol_header const * const buffer,
-                                              size_t * const processed);
+extern enum recv_return WARN_UNUSED_RESULT protocol_request_client_auth(struct connection * const state,
+                                                                        struct protocol_header const * const buffer,
+                                                                        size_t * const processed);
+extern enum recv_return WARN_UNUSED_RESULT protocol_request_server_helo(struct connection * const,
+                                                                        struct protocol_header const * const buffer,
+                                                                        size_t * const processed);
+extern enum recv_return WARN_UNUSED_RESULT protocol_request_data(struct connection * const state,
+                                                                 struct protocol_header const * const buffer,
+                                                                 size_t * const processed);
+extern enum recv_return WARN_UNUSED_RESULT protocol_request_ping(struct connection * const state,
+                                                                 struct protocol_header const * const buffer,
+                                                                 size_t * const processed);
+extern enum recv_return WARN_UNUSED_RESULT protocol_request_pong(struct connection * const state,
+                                                                 struct protocol_header const * const buffer,
+                                                                 size_t * const processed);
 
 /**************************
  * PDU send functionality *
@@ -214,14 +216,14 @@ void protocol_response_pong(unsigned char out[CRYPT_PACKET_SIZE_PONG], struct co
  * connection state functionality *
  **********************************/
 
-struct connection * new_connection_from_client(struct longterm_keypair const * const my_keypair);
-struct connection * new_connection_to_server(struct longterm_keypair const * const my_keypair);
+struct connection * WARN_UNUSED_RESULT new_connection_from_client(struct longterm_keypair const * const my_keypair);
+struct connection * WARN_UNUSED_RESULT new_connection_to_server(struct longterm_keypair const * const my_keypair);
 
 /***********************
  * timestamp functions *
  ***********************/
-double create_timestamp(void);
-double to_timestamp(uint64_t time_in_secs, uint32_t nano_secs);
-suseconds_t extract_nsecs(double time_in_secs);
+double WARN_UNUSED_RESULT create_timestamp(void);
+double WARN_UNUSED_RESULT to_timestamp(uint64_t time_in_secs, uint32_t nano_secs);
+uint32_t WARN_UNUSED_RESULT extract_nsecs(double time_in_secs);
 
 #endif

@@ -88,11 +88,11 @@ double to_timestamp(uint64_t time_in_secs, uint32_t nano_secs)
     return r + ((double)nano_secs * 1e-9);
 }
 
-suseconds_t extract_nsecs(double time_in_secs)
+uint32_t extract_nsecs(double time_in_secs)
 {
     double s = (double)((time_t)time_in_secs);
 
-    return (suseconds_t)((time_in_secs - s) / 1e-9);
+    return (uint32_t)((time_in_secs - s) / 1e-9);
 }
 
 static enum recv_return process_body(struct connection * const state,

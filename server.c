@@ -126,7 +126,7 @@ enum recv_return protocol_request_ping(struct connection * const state,
 
     (void)processed;
     strftime_local(ts, ts_str, sizeof(ts_str));
-    LOG(NOTICE, "Received PING with timestamp %.09lfs: %s / %lluns",
+    LOG(NOTICE, "Received PING with timestamp %.09lfs: %s / %uns",
         ts, ts_str, extract_nsecs(ts));
     if (state->latency > 0.0f) {
         LOG(NOTICE, "PING-PONG latency: %.09lfs", state->latency);
@@ -149,7 +149,7 @@ enum recv_return protocol_request_pong(struct connection * const state,
 
     (void)processed;
     strftime_local(ts, ts_str, sizeof(ts_str));
-    LOG(NOTICE, "Received PONG with timestamp %.09lfs: %s / %lluns / %zu outstanding PONG's",
+    LOG(NOTICE, "Received PONG with timestamp %.09lfs: %s / %uns / %zu outstanding PONG's",
         ts, ts_str, extract_nsecs(ts), state->awaiting_pong);
 
     if (state->awaiting_pong > 3) {
@@ -325,7 +325,9 @@ int main(int argc, char ** argv)
         return 2;
     }
 
-    srandom(time(NULL));
+    double ts = create_timestamp();
+    uint64_t ts_seed = (uint64_t)ts + extract_nsecs(ts);
+    srandom(ts_seed);
 
     if (sodium_init() != 0) {
         LOG(ERROR, "Sodium init failed");

@@ -32,7 +32,7 @@ static void send_data(struct connection * const state)
 
     if (data_fd >= 0) {
         bytes_read = read(data_fd, buf, sizeof(buf));
-        if (bytes_read <= 0 || ev_protocol_data(state, buf, bytes_read) != 0) {
+        if (bytes_read <= 0 || ev_protocol_data(state, buf, (uint32_t)bytes_read) != 0) {
             if (bytes_read == 0) {
                 LOG(WARNING, "EoF: Closing file descriptor %d aka %s", data_fd, opts.filepath);
             } else {
@@ -273,7 +273,9 @@ int main(int argc, char ** argv)
         return 2;
     }
 
-    srandom(time(NULL));
+    double ts = create_timestamp();
+    uint64_t ts_seed = (uint64_t)ts + extract_nsecs(ts);
+    srandom(ts_seed);
 
     if (sodium_init() != 0) {
         LOG(ERROR, "Sodium init failed");

@@ -212,7 +212,7 @@ int ev_protocol_ping(struct connection * const state)
     protocol_response_ping(ping_pkt_crypted, state);
 
     strftime_local(state->last_ping_send, timestamp, sizeof(timestamp));
-    LOG(LP_DEBUG, "Sending PING with ts %.09lf: %s / %lluns",
+    LOG(LP_DEBUG, "Sending PING with ts %.09lf: %s / %uns",
         state->last_ping_send, timestamp, extract_nsecs(state->last_ping_send));
     result = evbuffer_add(bufferevent_get_output(user_data->bev), ping_pkt_crypted, sizeof(ping_pkt_crypted));
     return result;
@@ -227,7 +227,7 @@ int ev_protocol_pong(struct connection * const state)
 
     protocol_response_pong(pong_pkt_crypted, state);
     strftime_local(state->last_pong_send, timestamp, sizeof(timestamp));
-    LOG(LP_DEBUG, "Sending PONG with ts %.09lf: %s / %lluns",
+    LOG(LP_DEBUG, "Sending PONG with ts %.09lf: %s / %uns",
         state->last_pong_send, timestamp, extract_nsecs(state->last_pong_send));
     result = evbuffer_add(bufferevent_get_output(user_data->bev), pong_pkt_crypted, sizeof(pong_pkt_crypted));
     return result;
