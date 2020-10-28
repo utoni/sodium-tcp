@@ -11,6 +11,11 @@ struct cmd_options {
      */
     char * key_string;
     size_t key_length;
+    /* server: user/password required for any client authentication
+     * client: user/password used against server authentication
+     */
+    char * user;
+    char * pass;
     /* server: listen host
      * client: remote host
      */

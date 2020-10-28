@@ -22,7 +22,7 @@
 #include "protocol.h"
 #include "utils.h"
 
-static struct cmd_options opts = {.key_string = NULL, .key_length = 0, .host = NULL, .port = 0, .filepath = NULL};
+static struct cmd_options opts = {.key_string = NULL, .key_length = 0, .user = NULL, .pass = NULL, .host = NULL, .port = 0, .filepath = NULL};
 static int data_fd = -1;
 
 static void send_data(struct connection * const state)
@@ -181,7 +181,7 @@ static void event_cb(struct bufferevent * bev, short events, void * con)
             on_disconnect(c);
             return;
         }
-        if (ev_protocol_client_auth(c, "username", "passphrase") != 0) {
+        if (ev_protocol_client_auth(c, opts.user, opts.pass) != 0) {
             LOG(ERROR, "Client AUTH failed");
             on_disconnect(c);
             return;
@@ -267,6 +267,7 @@ int main(int argc, char ** argv)
         LOG(ERROR, "Invalid host/port");
         return 2;
     }
+    LOG(NOTICE, "Host: %s, Port: %s, User: %s, Pass: %s", opts.host, opts.port, opts.user, opts.pass);
     LOG(NOTICE, "Resolving %s:%s..", opts.host, opts.port);
     gai_errno = hostname_to_address(opts.host, opts.port, &connect_addresses);
     if (gai_errno != 0) {

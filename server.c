@@ -22,7 +22,7 @@
 #include "protocol.h"
 #include "utils.h"
 
-static struct cmd_options opts = {.key_string = NULL, .key_length = 0, .host = NULL, .port = 0, .filepath = NULL};
+static struct cmd_options opts = {.key_string = NULL, .key_length = 0, .user = NULL, .pass = NULL, .host = NULL, .port = 0, .filepath = NULL};
 static int data_fd = -1;
 
 static void recv_data(uint8_t const * const buffer, size_t size)
@@ -51,8 +51,8 @@ enum recv_return protocol_request_client_auth(struct connection * const state,
     LOG(NOTICE, "Client AUTH with protocol version 0x%X", state->used_protocol_version);
 
     /* user/pass authentication part - exemplary */
-    if (strncmp(auth_pkt->login, "username", sizeof(auth_pkt->login)) == 0 &&
-        strncmp(auth_pkt->passphrase, "passphrase", sizeof(auth_pkt->passphrase)) == 0) {
+    if (strncmp(auth_pkt->login, opts.user, sizeof(auth_pkt->login)) == 0 &&
+        strncmp(auth_pkt->passphrase, opts.pass, sizeof(auth_pkt->passphrase)) == 0) {
 
         LOG(NOTICE,
             "Username '%.*s' with passphrase '%.*s' logged in",
@@ -319,6 +319,7 @@ int main(int argc, char ** argv)
         LOG(ERROR, "Invalid host/port");
         return 2;
     }
+    LOG(NOTICE, "Host: %s, Port: %s, User: %s, Pass: %s", opts.host, opts.port, opts.user, opts.pass);
     LOG(NOTICE, "Resolving %s:%s..", opts.host, opts.port);
     gai_errno = hostname_to_address(opts.host, opts.port, &connect_addresses);
     if (gai_errno != 0) {

@@ -10,7 +10,7 @@
 
 __attribute__((noreturn)) void usage(const char * const arg0)
 {
-    fprintf(stderr, "usage: %s -k [SODIUM-KEY] -h [HOST] -p [PORT] -f [FILE]\n", arg0);
+    fprintf(stderr, "usage: %s -k [SODIUM-KEY] -U [USER] -P [PASS] -r [HOST] -R [PORT] -f [FILE]\n", arg0);
     exit(EXIT_FAILURE);
 }
 
@@ -18,16 +18,22 @@ void parse_cmdline(struct cmd_options * const opts, int argc, char ** const argv
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "k:h:p:f:h")) != -1) {
+    while ((opt = getopt(argc, argv, "k:U:P:r:R:f:h")) != -1) {
         switch (opt) {
             case 'k':
                 opts->key_string = strdup(optarg);
                 memset(optarg, '*', strlen(optarg));
                 break;
-            case 'h':
+            case 'U':
+                opts->user = strdup(optarg);
+                break;
+            case 'P':
+                opts->pass = strdup(optarg);
+                break;
+            case 'r':
                 opts->host = strdup(optarg);
                 break;
-            case 'p':
+            case 'R':
                 opts->port = strdup(optarg);
                 break;
             case 'f':
@@ -46,6 +52,12 @@ void parse_cmdline(struct cmd_options * const opts, int argc, char ** const argv
     }
     if (opts->key_string != NULL) {
         opts->key_length = strlen(opts->key_string);
+    }
+    if (opts->user == NULL) {
+        opts->user = strdup("username");
+    }
+    if (opts->pass == NULL) {
+        opts->pass = strdup("passphrase");
     }
 }
 
